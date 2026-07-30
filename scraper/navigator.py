@@ -1,3 +1,4 @@
+import re
 import time
 
 from selenium.webdriver.common.by import By
@@ -67,32 +68,33 @@ def get_districts(driver) -> list:
     # As the driver keeps the navigated url,
     # , url corresponds to the particular state map
     # just keep selecting all the blinks on map for active districts
+    WebDriverWait(driver, 20).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.blink_icon_img"))
+    )
+
     blink_icons = driver.find_elements(By.CSS_SELECTOR, "div.blink_icon_img")
 
     print("Total blink icons:", len(blink_icons))
 
     # Appending the district name from attribute("aria-label") of a to districts list
-    # for icon in blink_icons:
-    # link = icon.find_element(By.TAG_NAME, "a")
-    # districts.append(link.get_attribute("aria-label"))
     for icon in blink_icons:
         if not icon.is_displayed():
             continue
 
         link = icon.find_element(By.TAG_NAME, "a")
-        districts.append(link.get_attribute("aria-label"))
+        district = link.get_attribute("aria-label")
 
-    return districts
+        if district:
+            districts.append(district)
+
     # Returning list of Districts
     return districts
-
-
-import re
 
 
 def get_fps(driver) -> list:
     """
     get_fps() : Returns the list of FPS IDs associated with the current district.
+                IMPORTANT: Does NOT store element references to avoid stale elements.
 
     Args:
         driver -> WebDriver object.
@@ -106,14 +108,17 @@ def get_fps(driver) -> list:
     )
 
     fps_ids = []
-
     fps_links = driver.find_elements(By.CSS_SELECTOR, "li.menu_list a")
 
+    # Extract IDs from onclick attributes (don't store element references)
     for link in fps_links:
         onclick = link.get_attribute("onclick")
-        fps_id = re.search(r"'(\d+)'", onclick).group(1)
-        fps_ids.append(fps_id)
+        match = re.search(r"'(\d+)'", onclick)
 
+        if match:
+            fps_ids.append(match.group(1))
+
+    print(f"Extracted FPS IDs: {len(fps_ids)}")
     return fps_ids
 
 
@@ -143,16 +148,123 @@ def navigate_fps(driver):
     # If the page navigates, wait for the URL to change
     try:
         WebDriverWait(driver, 10).until(EC.url_changes(current_url))
-    except:
+    except Exception:
         # Some districts load via AJAX without changing the URL
         pass
 
-        # Wait until the fps list/table is loaded
-        # Waiting until the FPS list is loaded
-
+    # Wait until the FPS list is loaded
     WebDriverWait(driver, 20).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.menu_list a"))
     )
+
+
+def click_fps_with_retry(driver, fps_id, max_retries=3):
+    """
+    click_fps_with_retry() : Click FPS by ID with retry logic.
+                             First tries JavaScript approach (most reliable),
+                             then falls back to element click with scroll.
+
+    Args:
+        driver -> WebDriver object.
+        fps_id -> FPS ID to click.
+        max_retries -> Number of retry attempts.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+
+    # Strategy 1: JavaScript function call (most reliable for AJAX pages)
+    try:
+        print(f"Attempting JS approach for FPS: {fps_id}")
+        driver.execute_script(f"stateData('{fps_id}');")
+
+        # Wait for FPS data to load
+        WebDriverWait(driver, 20).until(lambda d: fps_id in d.page_source)
+
+        # Small delay for AJAX sections
+        time.sleep(2)
+        print(f"Successfully loaded FPS {fps_id} via JavaScript")
+        return True
+    except Exception as e:
+        print(f"JS approach failed for {fps_id}: {str(e)}")
+
+    # Strategy 2: Element click with scroll and retry
+    for attempt in range(max_retries):
+        try:
+            print(
+                f"Attempt {attempt + 1}/{max_retries} - Element click for FPS: {fps_id}"
+            )
+
+            # Wait for FPS links to be present
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.menu_list a"))
+            )
+
+            # Re-fetch elements fresh each time (critical to avoid stale references)
+            fps_links = driver.find_elements(By.CSS_SELECTOR, "li.menu_list a")
+
+            found = False
+            for link in fps_links:
+                onclick = link.get_attribute("onclick")
+
+                # Check if this link contains our target FPS ID
+                if f"'{fps_id}'" in onclick:
+                    found = True
+
+                    # Scroll element into view to avoid "click intercepted" error
+                    driver.execute_script("arguments[0].scrollIntoView(true);", link)
+                    time.sleep(0.5)
+
+                    # Try regular click first
+                    try:
+                        link.click()
+                        print(f"Successfully clicked FPS {fps_id} with Selenium click")
+                        time.sleep(2)
+                        return True
+                    except Exception as click_error:
+                        print(
+                            f"Selenium click failed, trying JavaScript click: {click_error}"
+                        )
+                        # Fall back to JavaScript click
+                        driver.execute_script("arguments[0].click();", link)
+                        print(
+                            f"Successfully clicked FPS {fps_id} with JavaScript click"
+                        )
+                        time.sleep(2)
+                        return True
+
+            if not found:
+                print(
+                    f"FPS {fps_id} not found in links (attempt {attempt + 1}/{max_retries})"
+                )
+
+            # Wait before retry
+            if attempt < max_retries - 1:
+                time.sleep(1)
+
+        except Exception as e:
+            print(f"Click attempt {attempt + 1} failed: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(1)
+
+    print(f"Failed to click FPS {fps_id} after {max_retries} attempts")
+    return False
+
+
+def open_fps(driver, fps_id):
+    """
+    open_fps() : Open the selected FPS dashboard using JavaScript (most reliable).
+                 This function is kept for backward compatibility but delegates to
+                 click_fps_with_retry for actual implementation.
+
+    Args:
+        driver -> WebDriver object returned by browser.py.
+        fps_id -> FPS ID.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    return click_fps_with_retry(driver, fps_id)
 
 
 def navigate_district(driver, district):
@@ -176,8 +288,6 @@ def navigate_district(driver, district):
 
     # As loading of page took about 10-12 seconds so waiting for 15 seconds
     time.sleep(15)
-
-    navigate_fps(driver=driver)
 
 
 def navigate_state(driver, state):
@@ -204,57 +314,3 @@ def navigate_state(driver, state):
     # This is added intentionally as the url not changing and buffering is happening for atmost 10-12 seconds,
     # so added a waiting time for 15 seconds.
     time.sleep(15)
-
-    districts = get_districts(driver=driver)
-
-    # Navigating through each active district
-    for district in districts:
-
-        # Navigate to the district page and then to the FPS list
-        navigate_district(driver=driver, district=district)
-
-        # Getting all FPS IDs present in the current district
-        fps_ids = get_fps(driver)
-
-        # Navigating through each FPS of the current district
-        for fps_id in fps_ids:
-
-            # Waiting for the FPS link to become clickable
-            fps = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, f"//a[contains(@onclick, '{fps_id}')]")
-                )
-            )
-
-            # Clicking on the FPS
-            fps.click()
-
-            # TODO: Scrape FPS details here
-
-            # Returning back to the FPS list
-            driver.back()
-
-            # Waiting until the FPS list is loaded again
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.menu_list a"))
-            )
-
-        # Finished processing all FPS of the current district
-
-        # Returning back to the district page
-        driver.back()
-
-        # Waiting until the FAIR PRICE SHOPS card is visible again
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[onclick^='liveFpsdata']")
-            )
-        )
-
-        # Returning back to the state map
-        driver.back()
-
-        # Waiting until all active districts are visible again
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.blink_icon_img"))
-        )

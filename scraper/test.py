@@ -1,62 +1,107 @@
-import time
-
 from browser import get_driver
+from navigator import click_fps_with_retry  # Use the new retry-enabled function
 from navigator import (
     get_districts,
     get_fps,
     navigate_district,
     navigate_fps,
+    navigate_state,
     navigate_to_month,
 )
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+from writer import write_to_csv
 
-driver = get_driver()
+from scraper import scrape_fps
 
-# Navigate to month
-navigate_to_month(driver, 3, 2026)
+MONTH = 3
+YEAR = 2026
+STATE = "GOA"
 
-# Click GOA
-WebDriverWait(driver, 10).until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[title="GOA"]'))
-).click()
 
-time.sleep(15)
+def main():
+    driver = get_driver()
 
-print("Current URL after state:", driver.current_url)
+    try:
+        # Open required month
+        navigate_to_month(driver, MONTH, YEAR)
 
-# Get districts
-districts = get_districts(driver)
-print("Districts:", districts)
+        # Open state
+        navigate_state(driver, STATE)
 
-# Test only the first district
-district = districts[0]
-print("Opening district:", district)
+        print(f"Opened State: {STATE}")
 
-navigate_district(driver, district)
+        # Get districts
+        districts = get_districts(driver)
 
-print("Current URL after district:", driver.current_url)
+        print(f"Districts Found: {districts}")
 
-# Get FPS list
-fps_ids = get_fps(driver)
+        if not districts:
+            print("No districts found.")
+            return
 
-print("FPS Count:", len(fps_ids))
-print("First 10 FPS IDs:", fps_ids[:10])
+        # Test only first district
+        district = districts[0]
 
-# Open only the first FPS
-fps_id = fps_ids[0]
+        print(f"Opening District: {district}")
 
-print("Opening FPS:", fps_id)
+        navigate_district(driver, district)
 
-fps = WebDriverWait(driver, 10).until(
-    EC.element_to_be_clickable((By.XPATH, f"//a[contains(@onclick, '{fps_id}')]"))
-)
+        # Open FAIR PRICE SHOPS page
+        navigate_fps(driver)
 
-fps.click()
+        # Get FPS list
+        fps_ids = get_fps(driver)
 
-print("Current URL after FPS:", driver.current_url)
+        print(f"FPS Count: {len(fps_ids)}")
 
-input("Press Enter to close...")
+        if not fps_ids:
+            print("No FPS found.")
+            return
 
-driver.quit()
+        # Test only first FPS
+        fps_id = fps_ids[0]
+
+        print(f"Opening FPS: {fps_id}")
+
+        # Use new click_fps_with_retry for better error handling
+        success = click_fps_with_retry(driver, fps_id, max_retries=3)
+
+        if not success:
+            print(f"Failed to load FPS {fps_id} after 3 retries. Exiting.")
+            return
+
+        # Scrape FPS page
+        fps_data = scrape_fps(
+            driver=driver,
+            state=STATE,
+            district=district,
+            fps_id=fps_id,
+        )
+
+        print("\n========== SCRAPED DATA ==========\n")
+
+        for key, value in fps_data.items():
+            print(f"{key}: {value}")
+
+        print("\n=================================\n")
+
+        # Save CSV
+        write_to_csv(
+            fps_data=fps_data,
+            month=MONTH,
+            year=YEAR,
+        )
+
+        print("✓ CSV written successfully.")
+
+    except Exception as e:
+        print(f"\nError: {e}")
+        import traceback
+
+        traceback.print_exc()
+
+    finally:
+        driver.quit()
+
+
+if __name__ == "__main__":
+    main()
