@@ -16,12 +16,21 @@
 ### Step 2 Failure and Retry Logic
 Since the IMPDS website is dynamic and occasionally fails to load an FPS page correctly, a retry mechanism is implemented to improve scraping reliability.
 
-#### Failed FPS tracking
+### Failed FPS tracking
 ##### Maintained a list of dictionary (failed_fps) (structure : failed_fps = [ { "district": "NORTH GOA", "fps": "158500100001" } ])
 Because, if the fps unable to load or an exception occurs during scraping, , append that fps and its distict to failed_fps.
 
-#### First pass iterate over each fps in each district for particular month and year.
-#### Second pass with 2 retry logic(can be increased), i.e. Iterate over the list(failed_fps) two times so that every fps data get extracted.
+### First pass 
+  * Iterate through every district
+  * Visit every FPS withing the district
+  * Scrape the available data.
+  * Record any failed FPS in failed_fps
+### Second pass
+  * Iterate through the failed_fps list
+  * Retry scraping each failed FPS up to 2 additional times(Can be changed).
+  * If FPS scrapped successful remove it from list.
+
+
 
 
 ## How to Run
