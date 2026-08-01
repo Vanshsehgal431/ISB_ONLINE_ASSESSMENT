@@ -1,6 +1,4 @@
 import json
-import os
-from pathlib import Path
 
 from browser import get_driver
 from logger import logger
@@ -13,25 +11,16 @@ from navigator import (
     navigate_state,
     navigate_to_month,
 )
-from writer import write_to_csv
-
 from scraper import scrape_fps
+from writer import write_to_csv
 
 MONTH = [3, 4]
 YEAR = 2026
 STATE = "GOA"
 MAX_RETRY_ROUNDS = 2
-DATA_DIR = "data/raw"
 
 
-def create_district_folder(district: str, month: int, year: int) -> str:
-    # Create data/raw/{district}/{month}-{year}/ folder
-    folder_path = Path(DATA_DIR) / district / f"{month}-{year}"
-    folder_path.mkdir(parents=True, exist_ok=True)
-    return str(folder_path)
-
-
-def main():
+def get_raw_data():
     # Init driver
     driver = get_driver()
 
@@ -45,7 +34,9 @@ def main():
             failed_fps = []
 
             # Navigate to month and state
-            navigate_to_month(driver, [month], YEAR)
+            navigate_to_month(
+                driver, month, YEAR
+            )  # FIXED: pass month directly, not [month]
             navigate_state(driver, STATE)
 
             logger.info(f"Opened state: {STATE}")
@@ -64,10 +55,7 @@ def main():
 
                 logger.info(f"Processing district: {district}")
 
-                # Create folder structure for this district and month
-                output_folder = create_district_folder(district, month, YEAR)
-
-                navigate_to_month(driver, [month], YEAR)
+                navigate_to_month(driver, month, YEAR)  # FIXED: pass month directly
                 navigate_state(driver, STATE)
                 navigate_district(driver, district)
                 navigate_fps(driver)
@@ -114,7 +102,6 @@ def main():
                             fps_data=fps_data,
                             month=month,
                             year=YEAR,
-                            output_folder=output_folder,
                         )
 
                         logger.info(f"Saved FPS {fps_id}")
@@ -152,7 +139,9 @@ def main():
 
                     # Navigate to FPS list for retry
                     try:
-                        navigate_to_month(driver, [month], YEAR)
+                        navigate_to_month(
+                            driver, month, YEAR
+                        )  # FIXED: pass month directly
                         navigate_state(driver, STATE)
                         navigate_district(driver, district)
                         navigate_fps(driver)
@@ -192,7 +181,6 @@ def main():
                                 fps_data=fps_data,
                                 month=month,
                                 year=YEAR,
-                                output_folder=output_folder,
                             )
 
                             logger.info(f"Retry ok - FPS {fps_id}")
@@ -222,4 +210,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    get_raw_data()

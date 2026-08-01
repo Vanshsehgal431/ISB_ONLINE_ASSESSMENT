@@ -12,7 +12,7 @@ def navigate_to_month(driver, month, year):
                           (In our case it will take us to 3-2026 and 4-2026)
 
     Args: driver -> Return object by browser.py.
-          month -> The month have to be queried.
+          month -> The month have to be queried (int, not list).
           year -> The year have to be queried.
 
     Return: Nothing
@@ -21,13 +21,16 @@ def navigate_to_month(driver, month, year):
     # Getting the website .
     driver.get("https://impds.nic.in/sale/")
 
-    # Waiting for 10 seconds so that javascript finishes rendeering and calender's modal appears.
-    WebDriverWait(driver, 10).until(
+    # Waiting for 15 seconds so that javascript finishes rendering
+    time.sleep(2)
+
+    # Wait for calendar button and click it
+    WebDriverWait(driver, 15).until(
         EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[data-bs-target="#myModal10"]'))
     ).click()
 
-    # Waiting for 10 seconds so that calender's modal-content appears.
-    modal = WebDriverWait(driver, 10).until(
+    # Waiting for 15 seconds so that calendar's modal-content appears
+    modal = WebDriverWait(driver, 15).until(
         EC.visibility_of_element_located((By.CLASS_NAME, "modal-content"))
     )
 
