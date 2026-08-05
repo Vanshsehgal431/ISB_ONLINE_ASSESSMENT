@@ -87,6 +87,9 @@ cd pipeline
 ```
 
 ### 5. Running command
+```text
+run_pipeline.py call get_raw_data() and consolidate_data() internally
+```
 ```bash
 python run_pipeline.py
 
