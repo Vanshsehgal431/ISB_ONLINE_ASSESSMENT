@@ -146,6 +146,16 @@ The project follows a modular pipeline architecture where each module is respons
 * **logger.py** – Maintains execution logs for monitoring and debugging.
 * **run_pipeline.py** – Entry point that executes the complete pipeline.
 
+## Tech Stack
+
+* **Language:** Python 3
+* **Automation:** Selenium
+* **Data Processing:** Pandas
+* **Browser Driver:** ChromeDriver
+* **Output Format:** CSV
+* **Logging:** Python Logging Module
+
+
 ## Folder Structure
 
 ```text
