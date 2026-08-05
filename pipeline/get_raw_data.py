@@ -14,6 +14,7 @@ from navigator import (
 from scraper import scrape_fps
 from writer import write_to_csv
 
+# Months for March and April
 MONTH = [3, 4]
 YEAR = 2026
 STATE = "GOA"
@@ -21,31 +22,37 @@ MAX_RETRY_ROUNDS = 2
 
 
 def get_raw_data():
-    # Init driver
+    """
+    get_raw_data(): Extract data from each fps and store it in  data/raw/fps_id.csv
+    """
+    # Initialise the driver
     driver = get_driver()
 
+    # -------------------------------------------------  FIRST PASS ------------------------------------------------------
+    # For all FPS of all district
+    # --------------------------------------------------------------------------------------------------------------------
+    # Try and catch method
     try:
         # Process each month
         for month in MONTH:
 
             logger.info(f"Starting month {month}/{YEAR}")
 
-            # Track failed FPS for retry
+            # Tracking of the failed FPS.
             failed_fps = []
 
             # Navigate to month and state
-            navigate_to_month(
-                driver, month, YEAR
-            )  # FIXED: pass month directly, not [month]
+            navigate_to_month(driver, month, YEAR)
             navigate_state(driver, STATE)
 
             logger.info(f"Opened state: {STATE}")
 
-            # Get all districts
+            # Getting all districts
             districts = get_districts(driver)
 
             logger.info(f"Districts found: {districts}")
 
+            # If no Active district found pass the first pass
             if not districts:
                 logger.warning("No districts found.")
                 continue
@@ -55,9 +62,16 @@ def get_raw_data():
 
                 logger.info(f"Processing district: {district}")
 
-                navigate_to_month(driver, month, YEAR)  # FIXED: pass month directly
+                # Navigating to month
+                navigate_to_month(driver, month, YEAR)
+
+                # Navigating to state
                 navigate_state(driver, STATE)
+
+                # Navigating to district (each)
                 navigate_district(driver, district)
+
+                # Navigate to each fps
                 navigate_fps(driver)
 
                 # Get all fps for this district
@@ -81,6 +95,7 @@ def get_raw_data():
                             max_retries=3,
                         )
 
+                        # If fps failed append it to failed_fps
                         if not success:
                             failed_fps.append(
                                 {
@@ -91,6 +106,7 @@ def get_raw_data():
                             )
                             continue
 
+                        # Else scrap the data from fps
                         fps_data = scrape_fps(
                             driver=driver,
                             state=STATE,
@@ -98,6 +114,7 @@ def get_raw_data():
                             fps_id=fps_id,
                         )
 
+                        # Write it to CSV
                         write_to_csv(
                             fps_data=fps_data,
                             month=month,
@@ -109,6 +126,7 @@ def get_raw_data():
                     except Exception:
                         logger.exception(f"Error while scraping FPS {fps_id}")
 
+                        # If other error happened append that fps also
                         failed_fps.append(
                             {
                                 "district": district,
@@ -116,9 +134,11 @@ def get_raw_data():
                                 "month": month,
                             }
                         )
-
+                # -----------------------------------------------------------------------------------------------------------------------------------------------
+                # ------------------------------------------------------ SECOND PASS ---------------------------------------------------------------------------
                 # Retry failed FPS - max 2 rounds, only from current district
-
+                # Logic same as FIRST PASS Mostly.
+                # ------------------------------------------------------------------------------------------------------------------------------------------------
                 for retry_round in range(1, MAX_RETRY_ROUNDS + 1):
 
                     district_failed = [
