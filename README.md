@@ -33,6 +33,32 @@ Because, if the fps unable to load or an exception occurs during scraping, , app
 
 ## Hurdles
 
+### 1. Dynamic Page Updates
+
+Most of the pages are loaded dynamically using AJAX instead of a full page refresh. Because of this, explicit waits were required before interacting with elements or extracting data.
+
+### 2. State and District Navigation
+
+The website does not provide a direct list of districts. Active districts are shown as clickable markers on the state map, so the scraper first identifies these markers and then extracts the district names before navigating further.
+
+### 3. Dynamic FPS Loading
+
+Each FPS updates only the right-side panel without changing the URL. Proper synchronization was required to ensure that the updated data was loaded before scraping, preventing stale or incomplete data.
+
+### 4. Expandable Commodity Table
+
+The **Coarse Grains** section in the **Distributed Quantity (In Kg)** table is collapsed by default. The scraper expands this section before extracting the individual commodity values instead of only the aggregated total.
+
+### 5. Failure and Retry Logic
+
+Sometimes an FPS page does not load completely or throws an exception while scraping. Instead of stopping the entire pipeline, the failed FPS is added to a retry list and processed again after the first pass. This improves the overall scraping success rate.
+
+### 6. Long Running Scraping Sessions
+
+After scraping a large number of FPS pages continuously, the website occasionally becomes slow or stops responding. This is likely due to server-side request throttling or rate limiting.
+
+A possible improvement is to introduce **adaptive request delays**, **exponential backoff**, and **proxy rotation** so that requests are distributed more evenly, making the scraper more reliable for long-running jobs.
+
 
 ## How to Run
 
