@@ -64,31 +64,9 @@ After scraping a large number of FPS pages continuously, the website occasionall
 A possible improvement is to introduce **adaptive request delays**, **exponential backoff**, and **proxy rotation** so that requests are distributed more evenly, making the scraper more reliable for long-running jobs.
 
 ## Pipeline Flow
-User
-  │
-  ▼
-run_pipeline.py
-  │
-  ▼
-get_raw_data.py
-  │
-  ▼
-navigator.py
-  │
-  ▼
-scraper.py
-  │
-  ▼
-writer.py
-  │
-  ▼
-Raw CSV Files
-  │
-  ▼
-consolidate_data.py
-  │
-  ▼
-Processed CSV
+User --> run_pipeline.py --> get_raw_data.py --> navigator.py --> scraper.py --> writer.py --> Raw CSV Files --> consolidate_data.py --> Processed CSV.
+
+
 ## How to Run
 
 ### 1. Clone Repository
