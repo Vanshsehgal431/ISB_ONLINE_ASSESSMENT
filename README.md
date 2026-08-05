@@ -91,6 +91,61 @@ cd pipeline
 python run_pipeline.py
 
 ```
+
+## Architecture 
+## Architecture
+
+The project follows a modular pipeline architecture where each module is responsible for a single task.
+
+```text
+                +----------------+
+                |  browser.py    |
+                | WebDriver Init |
+                +-------+--------+
+                        |
+                        v
+                +----------------+
+                | navigator.py   |
+                | Website        |
+                | Navigation     |
+                +-------+--------+
+                        |
+                        v
+                +----------------+
+                |  scraper.py    |
+                | Data Extraction|
+                +-------+--------+
+                        |
+                        v
+                +----------------+
+                |   writer.py    |
+                | Raw CSV Writer |
+                +-------+--------+
+                        |
+                        v
+                data/raw/<month>/<district>/<fps>.csv
+                        |
+                        v
+                +----------------------+
+                | consolidate_data.py  |
+                | Merge Raw CSV Files  |
+                +----------+-----------+
+                           |
+                           v
+                data/processed/fps-level-records-Goa.csv
+```
+
+### Module Responsibilities
+
+* **browser.py** – Creates and configures the Selenium WebDriver.
+* **navigator.py** – Handles navigation through Month → State → District → FPS.
+* **scraper.py** – Extracts summary cards and all required transaction tables from an FPS page.
+* **writer.py** – Stores each scraped FPS as an individual CSV in the raw data layer.
+* **get_raw_data.py** – Orchestrates navigation, retry logic, scraping, and raw data generation.
+* **consolidate_data.py** – Merges all raw CSV files into a single processed dataset.
+* **logger.py** – Maintains execution logs for monitoring and debugging.
+* **run_pipeline.py** – Entry point that executes the complete pipeline.
+
 ## Folder Structure
 
 ```text
@@ -147,6 +202,7 @@ ISB_ONLINE_ASSESSMENT/
 ├── venv/                             # Local virtual environment
 ├── requirements.txt                  # Python dependencies (pandas, etc.)
 └── README.md                         # Project documentation
+
 
 ```
 
