@@ -1,5 +1,9 @@
 # ISB_ONLINE_ASSESSMENT
 
+## Overview
+
+This project is a Selenium-based data extraction pipeline developed as part of the ISB Online Assessment. The scraper navigates through the IMPDS portal, extracts transaction data from every Fair Price Shop (FPS) for a selected month and year, stores the raw data as individual CSV files, and finally consolidates them into a processed dataset.
+
 ## Approach
 ### Step 1 Navigation to each fps 
 1. Open the IMPDS portal:"https://impds.nic.in/sale/".
@@ -59,15 +63,39 @@ After scraping a large number of FPS pages continuously, the website occasionall
 
 A possible improvement is to introduce **adaptive request delays**, **exponential backoff**, and **proxy rotation** so that requests are distributed more evenly, making the scraper more reliable for long-running jobs.
 
-
+## Pipeline Flow
+User
+  │
+  ▼
+run_pipeline.py
+  │
+  ▼
+get_raw_data.py
+  │
+  ▼
+navigator.py
+  │
+  ▼
+scraper.py
+  │
+  ▼
+writer.py
+  │
+  ▼
+Raw CSV Files
+  │
+  ▼
+consolidate_data.py
+  │
+  ▼
+Processed CSV
 ## How to Run
 
 ### 1. Clone Repository
 Open your terminal and run the following commands:
 ```bash
-git clone [https://github.com/Vanshsehgal431/ISB_ONLINE_ASSESSMENT.git](https://github.com/Vanshsehgal431/ISB_ONLINE_ASSESSMENT.git)
+git clone https://github.com/Vanshsehgal431/ISB_ONLINE_ASSESSMENT.git
 cd ISB_ONLINE_ASSESSMENT
-
 ```
 ### 2. Activate virtual environment
 ```bash
@@ -94,7 +122,6 @@ python run_pipeline.py
 ```
 
 ## Architecture 
-## Architecture
 
 The project follows a modular pipeline architecture where each module is responsible for a single task.
 
@@ -156,6 +183,16 @@ The project follows a modular pipeline architecture where each module is respons
 * **Output Format:** CSV
 * **Logging:** Python Logging Module
 
+## Output
+
+The pipeline generates:
+
+- Raw Data
+  - Individual CSV for every FPS.
+  - Organized by Month → District → FPS.
+
+- Processed Data
+  - A consolidated CSV generated after merging all raw CSV files.
 
 ## Folder Structure
 
